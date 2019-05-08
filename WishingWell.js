@@ -1,15 +1,29 @@
 //including express
 var express = require('express');
 var app = express();
+var path = require('path');
+
+var cons = require('consolidate');
+
+// view engine setup
+app.engine('html', cons.swig)
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'html');
+
 
 var mongoose = require('mongoose');
 mongoose.exports = app;
 
-var url = "mongodb+srv://vikram:robinhood@cluster0-arcoz.mongodb.net/";
+var CryptoJS = require("crypto-js");
+
+
+var url = "mongodb+srv://vik:vikPassword@cluster0-arcoz.mongodb.net/WishingWell?retryWrites=true";
 
 var donor_schema = new mongoose.Schema({
+    name: String,
     email: String,
-    password: String
+    password: String,
+    creditcard: String
 });
 
 var donor = mongoose.model('donor', donor_schema);
@@ -17,7 +31,8 @@ var donor = mongoose.model('donor', donor_schema);
 var donee_schema = new mongoose.Schema({
     name: String,
     email: String,
-    message: String
+    password: String,
+    itemReq: []
 });
 
 var donee = mongoose.model('donee', donee_schema);
@@ -38,16 +53,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 app.set('port', process.env.PORT || 4040);
 app.use(express.static(__dirname));
 
-
-app.get('/fname-view', function (req, res) {
-    udb.view('userViews', 'fName-view', { include_docs: false, key: req.query.name }, function (err, data) {
-        if (!err) {
-            console.log(data); res.send(data.rows[0].value)
-        }
-    })
-console.log(__dirname);
-});
-
 //routing function and error handling 
 function serveStaticFile(res, path, contentType, responseCode) {
     if (!responseCode) responseCode = 200;
@@ -63,7 +68,11 @@ function serveStaticFile(res, path, contentType, responseCode) {
     });
 }
 
-
+function hashPW(password){
+    var passhash = CryptoJS.MD5(password);
+    return passhash;
+}
+    
 
 //Routes
 //Blank
@@ -73,18 +82,39 @@ app.get('/', function (req, res) {
 
 app.post('/login',function(req,res){
     var x = req.body.email;
-    var p = req.body.password;
+    var p = hashPW(req.body.password);
 
     donor.find({
         email: x,
     }).then(res1 => {
-        var o = JSON.parse(JSON.stringify(res1[0]));
-        
-        if(o.password == p)
-            res.redirect('/accountpage');
-        else
+        var obj = JSON.parse(JSON.stringify(res1[0]));
+        console.log(obj);
+        const name = obj.name;
+        console.log(name);
+        if(obj.password == p)
+            res.render('account', {name: name, prog: "width:90%"});
+            // res.redirect('/accountpage');
+        else 
             res.redirect('/incorrectlogin');
     }).catch(err => {
+        
+        console.log(err);
+        // res.redirect('/home');
+    });
+    donee.find({
+        email: x,
+    }).then(res1 => {
+        var obj = JSON.parse(JSON.stringify(res1[0]));
+        console.log(obj);
+        const name = obj.name;
+        console.log(name);
+        if(obj.password == p)
+            res.render('donee', {name: name, items: obj.itemReq});
+            // res.redirect('/accountpage');
+        else 
+            res.redirect('/incorrectlogin');
+    }).catch(err => {
+        
         console.log(err);
         res.redirect('/home');
     });
@@ -101,28 +131,43 @@ app.get('/home', function (req, res) {
 app.get('/subscribe', function (req, res) {
     serveStaticFile(res, '/subscribe.html', 'html', 200);
 });
-app.post('/account',function(req,res){
-    var x = req.body.email;
-    var p = req.body.password;
 
-    var obj = new donor({ email: x, password: p});
-    obj.save(function(err,res){
-        if (err) return console.log(err);
-        console.log("Document Inserted");
-    })
-    res.redirect('/submitted');
-});
 app.post('/register',function(req,res){
-    var n = req.body.Name;
-    var e = req.body.Email;
-    var m = req.body.Message;
-    var obj = new donee({ name: n, email: e, message: m });
+
+    var obj = new donee({ name: req.body.Name, email: req.body.Email, password: hashPW("qwer"), itemReq: [{item: req.body.itemReq, progress: 0}] });
     obj.save(function(err,res){
         if (err) console.log(err);
         console.log("Document Inserted");
     })
     res.redirect('/submitted');
 });
+app.post('/signup',function(req,res){
+    console.log(req.body);
+    var doc = {name: req.body.name, email: req.body.email, creditcard: req.body.creditcard, password: hashPW(req.body.password)};
+    console.log(doc);
+    var obj = new donor(doc);
+    obj.save(function(err,res){
+        if (err) console.log(err);
+        console.log("Document Inserted");
+    })
+    res.redirect('/submitted');
+});
+
+app.post('/addItem', function(req,res){
+    console.log({item: req.body.item, progress: 0});
+    donee.findOneAndUpdate({email:req.body.email},{$push: {itemReq: [{item: req.body.item, progress: 0}]}}).then(resp =>{
+        console.log(resp);
+        console.log('-----------------------------------------------------')
+        // console.log(JSON.parse(JSON.stringify(resp[0])));
+        console.log('-----------------------------------------------------')
+
+
+        res.render('donee1', {name: resp.name, items: resp.itemReq});
+    }).catch(err => {
+        console.log(err);
+    });
+});
+
 app.get('/accountpage',function(req,res){
     serveStaticFile(res, '/account.html', 'html', 200);
 });

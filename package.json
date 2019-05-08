@@ -10,9 +10,16 @@
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.18.3",
+    "consolidate": "^0.15.1",
+    "crypto-js": "^3.1.9-1",
+    "ejs": "^2.6.1",
     "express": "^4.16.4",
+    "jquery": "^3.4.0",
     "mongodb": "^3.2.3",
-    "nano": "^7.1.0"
+    "mongoose": "^5.5.3",
+    "nano": "^7.1.0",
+    "path": "^0.12.7",
+    "swig": "^1.4.2"
   },
   "directories": {
     "lib": "lib"
