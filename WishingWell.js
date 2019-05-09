@@ -23,7 +23,8 @@ var donor_schema = new mongoose.Schema({
     name: String,
     email: String,
     password: String,
-    creditcard: String
+    creditcard: String,
+    donations: []
 });
 
 var donor = mongoose.model('donor', donor_schema);
@@ -83,41 +84,78 @@ app.get('/', function (req, res) {
 app.post('/login',function(req,res){
     var x = req.body.email;
     var p = hashPW(req.body.password);
+    var donees;
+    var dList;
+    var count;
+    var flag = 0;
+    donee.find({}).then(function (res1) {
+        console.log(res1);
+        donees = res1;
+        console.log(donees);
+        
+    var r1 = Math.floor((Math.random() * count));
+    var r2 = Math.floor((Math.random() * 1));
 
+    var r3 = Math.floor((Math.random() * count));
+    var r4 = Math.floor((Math.random() * 1));
+    console.log(donees[r1]);
+    console.log(donees[r3]);
+        dList = {
+            n1: donees[r1].name, 
+            i1: donees[r1].itemReq[0].item, 
+            p1: donees[r1].itemReq[0].progress, 
+            n2: donees[r3].name, 
+            i2: donees[r3].itemReq[0].item, 
+            p2: donees[r3].itemReq[0].progress}; 
+    }).catch(err => console.log(err));
+
+    donee.countDocuments({}, function (err, c) {
+        count = c;
+        console.log(count);
+
+    });
+
+
+    console.log(donees);
+
+    console.log(dList);
     donor.find({
         email: x,
     }).then(res1 => {
+        console.log(res1);
         var obj = JSON.parse(JSON.stringify(res1[0]));
         console.log(obj);
+
         const name = obj.name;
-        console.log(name);
-        if(obj.password == p)
-            res.render('account', {name: name, prog: "width:90%"});
-            // res.redirect('/accountpage');
+        if(obj.password == p){
+            res.render('account', {name: name, dList: dList});
+            flag = 1;
+        }
+            
         else 
             res.redirect('/incorrectlogin');
     }).catch(err => {
-        
         console.log(err);
-        // res.redirect('/home');
     });
-    donee.find({
-        email: x,
-    }).then(res1 => {
-        var obj = JSON.parse(JSON.stringify(res1[0]));
-        console.log(obj);
-        const name = obj.name;
-        console.log(name);
-        if(obj.password == p)
-            res.render('donee', {name: name, items: obj.itemReq});
-            // res.redirect('/accountpage');
-        else 
-            res.redirect('/incorrectlogin');
-    }).catch(err => {
-        
-        console.log(err);
-        res.redirect('/home');
-    });
+    if (flag == 0){
+        donee.find({
+            email: x,
+        }).then(res1 => {
+            var obj = JSON.parse(JSON.stringify(res1[0]));
+            console.log(obj);
+            const name = obj.name;
+            console.log(name);
+            if(obj.password == p)
+                res.render('donee', {name: name, items: obj.itemReq});
+            else 
+                res.redirect('/incorrectlogin');
+        }).catch(err => {
+            
+            console.log(err);
+            res.redirect('/home');
+        });
+    }
+    
 });
 //login
 app.get('/login', function (req, res) {
@@ -131,6 +169,10 @@ app.get('/home', function (req, res) {
 app.get('/subscribe', function (req, res) {
     serveStaticFile(res, '/subscribe.html', 'html', 200);
 });
+app.get('/search', function (req, res) {
+    serveStaticFile(res, '/search.html', 'html', 200);
+});
+
 
 app.post('/register',function(req,res){
 
@@ -143,7 +185,7 @@ app.post('/register',function(req,res){
 });
 app.post('/signup',function(req,res){
     console.log(req.body);
-    var doc = {name: req.body.name, email: req.body.email, creditcard: req.body.creditcard, password: hashPW(req.body.password)};
+    var doc = {name: req.body.name, email: req.body.email, creditcard: req.body.creditcard, password: hashPW(req.body.password), donations: []};
     console.log(doc);
     var obj = new donor(doc);
     obj.save(function(err,res){
@@ -157,16 +199,73 @@ app.post('/addItem', function(req,res){
     console.log({item: req.body.item, progress: 0});
     donee.findOneAndUpdate({email:req.body.email},{$push: {itemReq: [{item: req.body.item, progress: 0}]}}).then(resp =>{
         console.log(resp);
-        console.log('-----------------------------------------------------')
-        // console.log(JSON.parse(JSON.stringify(resp[0])));
-        console.log('-----------------------------------------------------')
-
 
         res.render('donee1', {name: resp.name, items: resp.itemReq});
     }).catch(err => {
         console.log(err);
     });
 });
+
+function func(it, req) {
+    donee.findOneAndUpdate({name:req.body.name},{itemReq:it}).then(resp =>{
+        console.log(resp);
+        // res.render('account1', {name: resp.name, items: resp.itemReq});
+    }).catch(err => {
+        console.log(err);
+    });
+    return true;
+}
+
+app.post('/donation', function(req,res){
+    var it;
+    donee.find({
+        name: req.body.name,
+    }).then(res1 => {
+        console.log(res1);
+        var obj = JSON.parse(JSON.stringify(res1[0]));
+        console.log(obj);
+        it = obj.itemReq;
+        for (var i = 0; i < it.length; i++) {
+            //Do something
+
+            if(String(req.body.item) == String(it[i].item)){
+                it[i].progress = Number(it[i].progress) + Number(req.body.percent);
+                console.log(it[i].progress);
+            }
+        }
+        console.log(it);
+
+
+        setTimeout(function(){
+            donee.findOneAndUpdate({name:req.body.name},{itemReq:it}).then(resp =>{
+                console.log(resp);
+            }).catch(err => {
+                console.log(err);
+            });
+        }, 200);
+
+        setTimeout(function(){
+            console.log(req.body.email);
+            donor.findOneAndUpdate({name:req.body.email},{$push: {donations: [{donee: req.body.name, progress: req.body.percent}]}}).then(resp =>{
+                console.log(resp);
+                res.render('account1', {name: resp.name, items: resp.donations});
+            }).catch(err => {
+                console.log(err);
+            });
+        }, 600);
+
+    }).catch(err => {
+        
+        console.log(err);
+        res.redirect('/home');
+    });
+
+
+});
+
+function f(y, x){
+    return donee.findOneAndUpdate({name:x},{itemReq:y});
+}
 
 app.get('/accountpage',function(req,res){
     serveStaticFile(res, '/account.html', 'html', 200);
@@ -184,9 +283,7 @@ app.get('/incorrectlogin',function(req,res){
 
 // custom 404 page
 app.use(function (req, res) {
-    res.type('text/plain');
-    res.status(404);
-    res.send('404 - Not Found');
+    serveStaticFile(res, '/404page.html', 'html', 404);
 });
 // custom 500 page
 app.use(function (err, req, res, next) {

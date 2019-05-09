@@ -47,8 +47,12 @@
 
         <!-- This is the progress bar of each institution for each donor -->
         <p class="w3-large w3-center w3-padding-16">Donations:</p>
-        <p class="w3-wide"><i class="fa fa-frown"></i>You have not made any donations yet</p>
+        <p class="w3-wide">{{items[0].donee}}</p>
 
+        <div class="w3-light-grey">
+                {{items[0].progress}}% Completed
+            <div class="w3-container w3-padding-small w3-dark-grey w3-center" style="width:{{items[0].progress}}%"></div>
+            </div>
 
         <!-- This is the progress bar of each institution for each donor -->
         <p class="w3-large w3-center w3-padding-16">Donees are looking for:</p>
